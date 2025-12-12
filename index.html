@@ -495,5 +495,80 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<ParritRetro />);
     </script>
+
+<script type="module">
+  // Import Firebase SDKs
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut
+  } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+  // Paste your Firebase config here
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Auth provider (Google for simplicity)
+  const provider = new GoogleAuthProvider();
+
+  // Login/Logout buttons (add these to your HTML)
+  document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
+  document.getElementById('logoutBtn').onclick = () => signOut(auth);
+
+  // Listen for auth state changes
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      console.log("Logged in:", user.email);
+      loadBoard();
+    } else {
+      console.log("Logged out");
+    }
+  });
+
+  // Firestore references
+  const boardDoc = doc(db, 'boards', 'default');
+  const historyCol = collection(db, 'boards', 'default', 'history');
+
+  // Load board state
+  async function loadBoard() {
+    onSnapshot(boardDoc, snap => {
+      if (snap.exists()) {
+        renderBoard(snap.data()); // You implement renderBoard()
+      }
+    });
+  }
+
+  // Save board state + history
+  async function saveBoard(newState, action, details = {}) {
+    await setDoc(boardDoc, { ...newState, updatedAt: serverTimestamp() }, { merge: true });
+    await addDoc(historyCol, {
+      ts: serverTimestamp(),
+      actor: auth.currentUser.email,
+      action,
+      details,
+      state: newState
+    });
+  }
+
+  // Example: call saveBoard when a pairing changes
+  window.onPairChanged = (pairs, movedInfo) => {
+    saveBoard({ pairs }, 'MOVE_DEV', movedInfo);
+  };
+</script>
+    
 </body>
 </html>
+
