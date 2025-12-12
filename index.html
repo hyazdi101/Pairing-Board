@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property List Pairing Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar-track { background: #fff7ed; border-left: 3px solid #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #fdba74; border: 3px solid #1e293b; }
+        ::-webkit-scrollbar-thumb:hover { background: #fb923c; }
+        body { background-color: #fff7ed; overflow-x: hidden; }
+        
+        /* Input Reset for Editable Titles */
+        .title-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            cursor: text;
+            font-family: inherit;
+        }
+        .title-input:focus {
+            background: rgba(255,255,255,0.5);
+            border-radius: 4px;
+        }
+
+        /* CAT RAIN ANIMATION */
+        @keyframes rain-fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+        .cat-drop {
+            position: absolute;
+            top: -50px;
+            animation: rain-fall linear forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ICON SYSTEM ---
+        const Icons = {
+            Cat: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3.1-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5"/></svg>,
+            Dog: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5"/><path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.96-1.45-2.344-2.5"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5"/><path d="M12 21c4.97 0 9-4.03 9-9 0-4.5-3.5-8-8-8-4.5 0-8 3.5-8 8 0 4.97 4.03 9 9 9Z"/></svg>,
+            Rocket: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>,
+            Pizza: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 11h.01"/><path d="M11 15h.01"/><path d="M16 16h.01"/><path d="m2 16 20 6-6-20A20 20 0 0 0 2 16"/><path d="M5.71 17.11a17.04 17.04 0 0 1 11.4-11.4"/></svg>,
+            Ghost: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg>,
+            Smile: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>,
+            Users: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            History: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>,
+            Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            X: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 18 18"/></svg>,
+            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+            MoreHorizontal: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>,
+            Anchor: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="3"/><line x1="12" x2="12" y1="22" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>,
+            Briefcase: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+            Zap: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+            Alien: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 17a2.99 2.99 0 0 1 2.99-2.99c1.66 0 3 1.34 3 3s-1.34 3-3 3a2.99 2.99 0 0 1-2.99-3Z"/><path d="M2 12a10 10 0 1 1 20 0c0 1.19-.15 2.36-.45 3.5C20 19.62 16.58 22 12 22s-8-2.38-9.55-6.5A10.06 10.06 0 0 1 2 12Z"/><path d="M13 17h.01"/><path d="M9 9a3 3 0 1 1 6 0"/></svg>,
+            Robot: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="12" x="3" y="6" rx="2"/><path d="M9 14v2"/><path d="M15 14v2"/><path d="M9 10v.01"/><path d="M15 10v.01"/><path d="M12 2v4"/><path d="M7 2v4"/><path d="M17 2v4"/><path d="M3 12h18"/><path d="M3 6v12c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V6"/></svg>,
+            Joystick: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 13v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><circle cx="10" cy="15" r="2"/><path d="M21 13a9 9 0 0 0-18 0"/><path d="M12 12v-3"/><circle cx="12" cy="6" r="3"/><path d="M14.5 8.5 17 11"/><path d="M9.5 8.5 7 11"/></svg>,
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6"/><path d="M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        };
+
+        const TRACKS_CONFIG = [
+            { id: 'track-1', defaultName: 'Track 1', type: 'work', color: 'bg-teal-100' },
+            { id: 'track-2', defaultName: 'Track 2', type: 'work', color: 'bg-teal-100' },
+            { id: 'track-3', defaultName: 'Track 3', type: 'work', color: 'bg-teal-100' },
+            { id: 'ooo', defaultName: 'Out of Office', type: 'ooo', color: 'bg-yellow-200' },
+            { id: 'floating', defaultName: 'Floating Pool', type: 'pool', color: 'bg-orange-100' },
+        ];
+
+        const EMOJI_OPTIONS = [
+            { id: 'cat', icon: Icons.Cat },
+            { id: 'dog', icon: Icons.Dog },
+            { id: 'rocket', icon: Icons.Rocket },
+            { id: 'pizza', icon: Icons.Pizza },
+            { id: 'ghost', icon: Icons.Ghost },
+            { id: 'alien', icon: Icons.Alien },
+            { id: 'robot', icon: Icons.Robot },
+            { id: 'joystick', icon: Icons.Joystick },
+            { id: 'smile', icon: Icons.Smile },
+            { id: 'zap', icon: Icons.Zap },
+            { id: 'anchor', icon: Icons.Anchor },
+            { id: 'briefcase', icon: Icons.Briefcase },
+        ];
+
+        // --- COMPONENTS ---
+
+        const RetroButton = ({ children, onClick, color = 'bg-white', className = '' }) => (
+            <button 
+                onClick={onClick}
+                className={`
+                ${color} border-4 border-slate-800 px-4 py-2 font-bold text-slate-800
+                shadow-[4px_4px_0px_0px_rgba(30,41,59,1)] active:shadow-none active:translate-x-[4px] active:translate-y-[4px]
+                transition-all flex items-center gap-2 ${className}
+                `}
+            >
+                {children}
+            </button>
+        );
+
+        const RetroCard = ({ children, className = '', color = 'bg-white' }) => (
+            <div className={`${color} border-4 border-slate-800 p-4 shadow-[4px_4px_0px_0px_rgba(30,41,59,1)] ${className}`}>
+                {children}
+            </div>
+        );
+
+        const Modal = ({ title, onClose, children }) => (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-800/80 backdrop-blur-sm p-4">
+                <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <RetroCard color="bg-orange-50">
+                    <div className="flex justify-between items-center mb-6 border-b-4 border-slate-800 pb-2">
+                    <h2 className="text-2xl font-black uppercase text-slate-800">{title}</h2>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded border-2 border-transparent hover:border-slate-800 transition-all">
+                        <Icons.X />
+                    </button>
+                    </div>
+                    {children}
+                </RetroCard>
+                </div>
+            </div>
+        );
+
+        // --- APP ---
+
+        function ParritRetro() {
+            // Load state from local storage or use defaults
+            const [people, setPeople] = useState(() => {
+                const saved = localStorage.getItem('parrit-people');
+                return saved ? JSON.parse(saved) : [
+                    { id: 'p1', name: 'Gracie', emoji: 'cat', track: 'floating' },
+                    { id: 'p2', name: 'Ty', emoji: 'rocket', track: 'floating' },
+                    { id: 'p3', name: 'Nate', emoji: 'pizza', track: 'floating' },
+                ];
+            });
+
+            const [history, setHistory] = useState(() => {
+                const saved = localStorage.getItem('parrit-history');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            const [trackData, setTrackData] = useState(() => {
+                const saved = localStorage.getItem('parrit-tracks');
+                if (saved) return JSON.parse(saved);
+                
+                // Track notes only now, no tags
+                const initialData = {};
+                TRACKS_CONFIG.forEach(t => { initialData[t.id] = { notes: '' }; });
+                return initialData;
+            });
+
+            const [trackNames, setTrackNames] = useState(() => {
+                const saved = localStorage.getItem('parrit-track-names');
+                if (saved) return JSON.parse(saved);
+                
+                const initialNames = {};
+                TRACKS_CONFIG.forEach(t => { initialNames[t.id] = t.defaultName; });
+                return initialNames;
+            });
+
+            // Modals & States
+            const [showManagePeople, setShowManagePeople] = useState(false);
+            const [showHistory, setShowHistory] = useState(false);
+            const [isRaining, setIsRaining] = useState(false);
+            
+            // Form state
+            const [newPersonName, setNewPersonName] = useState('');
+            const [selectedEmoji, setSelectedEmoji] = useState('smile');
+
+            // Persistence Effects
+            useEffect(() => localStorage.setItem('parrit-people', JSON.stringify(people)), [people]);
+            useEffect(() => localStorage.setItem('parrit-history', JSON.stringify(history)), [history]);
+            useEffect(() => localStorage.setItem('parrit-tracks', JSON.stringify(trackData)), [trackData]);
+            useEffect(() => localStorage.setItem('parrit-track-names', JSON.stringify(trackNames)), [trackNames]);
+
+            // DND Logic
+            const handleDragStart = (e, personId) => {
+                e.dataTransfer.setData('personId', personId);
+            };
+
+            const handleDrop = (e, targetTrackId) => {
+                e.preventDefault();
+                const personId = e.dataTransfer.getData('personId');
+                setPeople(prev => prev.map(p => 
+                p.id === personId ? { ...p, track: targetTrackId } : p
+                ));
+            };
+
+            const handleDragOver = (e) => e.preventDefault();
+
+            // Actions
+            const handleResetBoard = () => {
+                if (window.confirm("Reset Board? Moving everyone to the floating pool!")) {
+                    setPeople(prev => prev.map(p => ({ ...p, track: 'floating' })));
+                }
+            };
+
+            const handleMakeItRain = () => {
+                setIsRaining(true);
+                setTimeout(() => setIsRaining(false), 3000);
+            };
+
+            const handleSavePairing = () => {
+                const timestamp = new Date().toLocaleString();
+                const snapshot = TRACKS_CONFIG.map(track => ({
+                    trackId: track.id,
+                    trackName: trackNames[track.id] || track.defaultName,
+                    people: people.filter(p => p.track === track.id)
+                })).filter(t => t.people.length > 0);
+
+                if (snapshot.length === 0) {
+                    alert("No pairs to save!");
+                    return;
+                }
+
+                setHistory(prev => [{ id: Date.now(), date: timestamp, snapshot }, ...prev]);
+                alert("Pairing Saved to History!");
+            };
+
+            const deleteHistoryEntry = (id) => {
+                if(confirm('Are you sure you want to delete this history entry?')) {
+                    setHistory(prev => prev.filter(entry => entry.id !== id));
+                }
+            };
+
+            const addPerson = () => {
+                if (!newPersonName.trim()) return;
+                const newPerson = {
+                id: Date.now().toString(),
+                name: newPersonName,
+                emoji: selectedEmoji,
+                track: 'floating'
+                };
+                setPeople([...people, newPerson]);
+                setNewPersonName('');
+            };
+
+            const removePerson = (id) => {
+                if(confirm('Delete this person?')) {
+                    setPeople(people.filter(p => p.id !== id));
+                }
+            };
+
+            // Track Helpers
+            const updateTrackName = (id, newName) => {
+                setTrackNames(prev => ({ ...prev, [id]: newName }));
+            };
+
+            const updateNotes = (trackId, text) => {
+                setTrackData(prev => ({
+                    ...prev,
+                    [trackId]: { ...prev[trackId], notes: text }
+                }));
+            };
+
+            const getIconComponent = (id) => {
+                const opt = EMOJI_OPTIONS.find(e => e.id === id);
+                const Icon = opt ? opt.icon : Icons.Smile;
+                return <Icon />;
+            };
+
+            return (
+                <div className="min-h-screen bg-orange-50 font-sans text-slate-800 p-8 relative">
+                
+                {/* --- CAT RAIN LAYER --- */}
+                {isRaining && (
+                    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+                        {Array.from({ length: 50 }).map((_, i) => (
+                            <div 
+                                key={i}
+                                className={`cat-drop ${['text-orange-500', 'text-slate-800', 'text-teal-600'][Math.floor(Math.random()*3)]}`}
+                                style={{
+                                    left: `${Math.random() * 100}vw`,
+                                    animationDuration: `${Math.random() * 1.5 + 1}s`,
+                                    animationDelay: `${Math.random() * 0.5}s`,
+                                    transform: `scale(${Math.random() * 1 + 0.5})`
+                                }}
+                            >
+                                <Icons.Cat size={48} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Header */}
+                <header className="mb-8">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                    <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-slate-800 drop-shadow-sm flex items-center gap-2">
+                        Property List <span className="text-orange-500">Pairing Board</span>
+                    </h1>
+                    <div className="flex gap-4">
+                        <RetroButton onClick={handleMakeItRain} color="bg-blue-300">
+                            🌧️ Make It Rain
+                        </RetroButton>
+                        <RetroButton onClick={() => setShowManagePeople(true)} color="bg-emerald-300">
+                            <Icons.Users /> Manage People
+                        </RetroButton>
+                        <RetroButton onClick={() => setShowHistory(true)} color="bg-yellow-300">
+                            <Icons.History /> History
+                        </RetroButton>
+                    </div>
+                    </div>
+
+                    <div className="flex gap-4 p-4 border-4 border-slate-800 bg-white shadow-[4px_4px_0px_0px_rgba(30,41,59,1)] rounded-lg flex-col sm:flex-row">
+                    <RetroButton onClick={handleResetBoard} color="bg-gradient-to-r from-orange-400 to-red-400 text-white" className="flex-1 justify-center text-xl">
+                        🔄 Reset Board
+                    </RetroButton>
+                    <RetroButton onClick={handleSavePairing} color="bg-gradient-to-r from-indigo-400 to-purple-400 text-white" className="flex-1 justify-center text-xl">
+                        <Icons.Save /> Save Pairing
+                    </RetroButton>
+                    </div>
+                </header>
+
+                {/* Board */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 pb-8">
+                    {TRACKS_CONFIG.map(track => {
+                        const trackPeople = people.filter(p => p.track === track.id);
+                        const isFloating = track.id === 'floating';
+                        const data = trackData[track.id] || { notes: '' };
+                        const currentName = trackNames[track.id];
+
+                        return (
+                            <div 
+                                key={track.id}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, track.id)}
+                                className="flex flex-col h-full min-h-[500px]"
+                            >
+                                {/* Track Header */}
+                                <div className={`${track.color} border-4 border-slate-800 border-b-0 p-3 flex justify-between items-center`}>
+                                    <input 
+                                        type="text"
+                                        value={currentName}
+                                        onChange={(e) => updateTrackName(track.id, e.target.value)}
+                                        className="font-bold text-lg uppercase title-input"
+                                    />
+                                    <span className="bg-slate-800 text-white px-2 py-0.5 text-sm font-bold rounded-full">
+                                        {trackPeople.length}
+                                    </span>
+                                </div>
+
+                                {/* Track Body */}
+                                <div className={`flex-1 bg-white border-4 border-slate-800 p-3 space-y-3 relative ${isFloating ? 'bg-orange-50/50' : ''}`}>
+                                    
+                                    {/* People Cards */}
+                                    {trackPeople.map(person => (
+                                        <div
+                                            key={person.id}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, person.id)}
+                                            className="cursor-move hover:-translate-y-1 transition-transform"
+                                        >
+                                            <RetroCard className="p-2 flex items-center gap-3 bg-white">
+                                                <div className="bg-orange-100 p-2 rounded-full border-2 border-slate-800">
+                                                    {getIconComponent(person.emoji)}
+                                                </div>
+                                                <span className="font-bold text-lg">{person.name}</span>
+                                            </RetroCard>
+                                        </div>
+                                    ))}
+
+                                    {trackPeople.length === 0 && !isFloating && (
+                                        <div className="text-center opacity-20 font-black text-3xl mt-10 select-none text-slate-400">
+                                            DROP HERE
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Notes Section */}
+                                <div className="border-4 border-t-0 border-slate-800 bg-slate-100 p-2">
+                                    <details className="group">
+                                        <summary className="font-bold text-xs uppercase cursor-pointer list-none flex justify-between items-center text-slate-500 hover:text-slate-800">
+                                            <span>Notes</span>
+                                            <Icons.MoreHorizontal />
+                                        </summary>
+                                        <textarea 
+                                            className="w-full mt-2 bg-yellow-50 border-2 border-slate-300 p-2 text-sm focus:border-slate-800 focus:outline-none resize-y min-h-[60px]"
+                                            placeholder="Notes..."
+                                            value={data.notes}
+                                            onChange={(e) => updateNotes(track.id, e.target.value)}
+                                        />
+                                    </details>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Manage People Modal */}
+                {showManagePeople && (
+                    <Modal title="Manage People" onClose={() => setShowManagePeople(false)}>
+                        <div className="flex flex-col gap-4 mb-6 border-b-2 border-slate-300 pb-6">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value={newPersonName}
+                                    onChange={(e) => setNewPersonName(e.target.value)}
+                                    placeholder="Name" 
+                                    className="flex-1 border-4 border-slate-800 p-2 font-bold focus:outline-none focus:ring-4 ring-orange-200"
+                                    onKeyDown={(e) => e.key === 'Enter' && addPerson()}
+                                />
+                                <RetroButton onClick={addPerson} color="bg-emerald-300">Add</RetroButton>
+                            </div>
+                            <div className="flex gap-2 flex-wrap bg-slate-100 p-2 border-2 border-slate-200 rounded">
+                                {EMOJI_OPTIONS.map(opt => {
+                                    const Icon = opt.icon;
+                                    return (
+                                        <button 
+                                            key={opt.id}
+                                            onClick={() => setSelectedEmoji(opt.id)}
+                                            className={`p-2 border-4 rounded-lg transition-all ${selectedEmoji === opt.id ? 'border-orange-500 bg-orange-100 scale-110' : 'border-slate-200 hover:border-slate-400 bg-white'}`}
+                                            title={opt.id}
+                                        >
+                                            <Icon />
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {people.map(p => (
+                                <div key={p.id} className="flex justify-between items-center border-b-2 border-slate-200 py-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-slate-100 p-1 rounded border border-slate-300">
+                                            {getIconComponent(p.emoji)}
+                                        </div>
+                                        <span className="font-bold">{p.name}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => removePerson(p.id)} className="text-red-500 hover:bg-red-100 p-1 rounded"><Icons.X /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Modal>
+                )}
+
+                {/* History Modal */}
+                {showHistory && (
+                    <Modal title="Pairing History" onClose={() => setShowHistory(false)}>
+                        {history.length === 0 ? (
+                            <p className="text-center text-slate-400 italic py-8">No history recorded yet. Go make some pairs!</p>
+                        ) : (
+                            <div className="space-y-6">
+                                {history.map(entry => (
+                                    <RetroCard key={entry.id} className="bg-white">
+                                        <div className="flex justify-between items-start mb-4 border-b-2 border-slate-100 pb-2">
+                                            <div>
+                                                <span className="font-black text-slate-800 text-lg uppercase block">{new Date(entry.date).toDateString()}</span>
+                                                <span className="text-xs font-bold text-slate-400">{new Date(entry.date).toLocaleTimeString()}</span>
+                                            </div>
+                                            <button onClick={() => deleteHistoryEntry(entry.id)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded transition-colors" title="Delete Entry">
+                                                <Icons.Trash />
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            {entry.snapshot.map((track, idx) => (
+                                                <div key={idx} className="bg-slate-50 p-2 border-2 border-slate-200 rounded">
+                                                    <div className="font-bold text-xs uppercase text-slate-500 mb-1 truncate">{track.trackName}</div>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {track.people.map(p => (
+                                                            <span key={p.id} className="bg-white border border-slate-300 px-2 py-0.5 text-sm rounded shadow-sm flex items-center gap-1">
+                                                                <span className="scale-75">{getIconComponent(p.emoji)}</span> {p.name}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </RetroCard>
+                                ))}
+                            </div>
+                        )}
+                    </Modal>
+                )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ParritRetro />);
+    </script>
+</body>
+</html>
